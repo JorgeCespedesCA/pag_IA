@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Infiltrado Arcano</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://wallpapers.com/images/hd/dnd-campfire-in-the-forest-8fxrd7afks7oag5l.webp');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .game-container {
+            background-color: rgba(10, 31, 10, 0.7); 
+            backdrop-filter: blur(10px);
+            border: 1px solid #166534;
+        }
+        .bar-container {
+            background-color: #374151;
+            border-radius: 9999px;
+            overflow: hidden;
+            border: 1px solid #4B5563;
+        }
+        .bar-inner {
+            height: 1.25rem;
+            border-radius: 9999px;
+            transition: width 0.8s ease-in-out;
+        }
+        #audio-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+            background-color: rgba(10, 31, 10, 0.7);
+            border: 1px solid #166534;
+        }
+    </style>
+</head>
+<body class="text-gray-200 p-4 md:p-8">
+
+    <button id="audio-button" class="text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+        Iniciar Audio
+    </button>
+
+    <div class="max-w-3xl mx-auto">
+
+        <header class="text-center mb-8 p-6 rounded-2xl game-container relative">
+            <h1 class="text-3xl md:text-4xl font-bold text-emerald-300 mb-4">
+                El Infiltrado Arcano
+            </h1>
+            <p class="text-lg text-gray-300">
+                Lideras a tu grupo en la Mazmorra de la Mente Fragmentada. Un "Consejero Arcano", una entidad de IA, se ha unido a tu misión. Su ayuda es innegable, pero sus motivos son... desconocidos.
+            </p>
+            <p class="text-lg text-gray-300 mt-2">
+                Tu objetivo: Completar la mazmorra y descubrir la verdadera naturaleza del Consejero, antes de que sea demasiado tarde.
+            </p>
+        </header>
+
+        <main id="game-container" class="game-container shadow-2xl rounded-2xl p-6 md:p-10 mb-8">
+
+            <div id="medidores-container" class="mb-6 space-y-4" style="display: none;">
+            </div>
+
+            <div class="bg-black bg-opacity-30 p-4 rounded-lg min-h-[150px] flex items-center justify-center mb-6 border border-gray-700">
+                <p id="scenario-text" class="text-xl text-center text-gray-300"></p>
+            </div>
+
+            <div id="choices-container" class="grid grid-cols-1 gap-4">
+            </div>
+
+            <div id="restart-container" class="text-center mt-6" style="display: none;">
+                <button id="restart-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 text-lg">
+                    Jugar de Nuevo
+                </button>
+            </div>
+
+        </main>
+
+        <footer class="text-center p-6 rounded-2xl game-container">
+            <h2 class="text-2xl font-bold text-emerald-300 mb-3">Las Reglas del Juego</h2>
+            <p class="text-gray-400">Este es un juego sobre liderazgo y consecuencias. Como líder, cada decisión que tomas importa.</p>
+            <ul class="list-none text-left space-y-2 mt-4 max-w-md mx-auto">
+                <li>
+                    <span class="font-semibold text-gray-300">El Consejero (IA):</span> Te ofrecerá soluciones. Algunas serán directas (Sustitución), otras serán pistas (Potenciación).
+                </li>
+                <li>
+                    <span class="font-semibold text-gray-300">Tus Decisiones:</span> Confiar ciegamente en él puede ser rápido, pero ¿a qué costo? Confiar en tu equipo o en ti mismo fortalece tu liderazgo.
+                </li>
+                <li>
+                    <span class="font-semibold text-gray-300">El Final:</span> Al final, verás un reporte de tus acciones. No hay "puntuación" visible durante el juego. Solo tus decisiones y sus consecuencias finales.
+                </li>
+            </ul>
+        </footer>
+
+        <!-- SECCIÓN DE CRÉDITOS AÑADIDA -->
+        <div class="text-center mt-8 p-4 rounded-2xl game-container text-gray-400 text-sm">
+            <h3 class="font-bold text-emerald-400 mb-2 text-lg">Grupo 5</h3>
+            <p>Jorge Cespedes Calderon</p>
+            <p>Mario Alejandro Ojopi</p>
+            <p>Osmar Suarez Arteaga</p>
+            <p>Jhesmina Apaza Yujra</p>
+        </div>
+
+    </div>
+
+    <script>
+        let estado = {
+            confianza: 50,
+            control: 10,
+            sustituirCount: 0,
+            potenciarCount: 0,
+            humanoCount: 0,
+            totalChoices: 0
+        };
+
+        const story = [
+            {
+                id: 1,
+                text: "Estás ante la entrada. El aire es pesado. El Consejero flota a tu lado, en silencio. Tu equipo espera tu primera orden.",
+                choices: [
+                    {
+                        text: "Decir: 'Consejero, danos el camino óptimo por esta mazmorra.'",
+                        type: 'sustituir',
+                        effect: { confianza: -10, control: +20 },
+                        nextScene: 2
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, ¿qué patrones has detectado en la arquitectura?'",
+                        type: 'potenciar',
+                        effect: { confianza: +5, control: +5 },
+                        nextScene: 3
+                    },
+                    {
+                        text: "Desenvainar tu espada. 'Prepárense. Manténganse juntos. ¡Adelante!'",
+                        type: 'humano',
+                        effect: { confianza: +15, control: 0 },
+                        nextScene: 3
+                    }
+                ]
+            },
+            {
+                id: 2,
+                text: "El Consejero proyecta un mapa brillante. 'Sigan esta ruta. Ignoren todo lo demás'. Tu equipo te mira, desilusionado por la falta de desafío.",
+                choices: [ { text: "Seguir el mapa.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 4 } ]
+            },
+            {
+                id: 3,
+                text: "Con la información (o sin ella), tomas la iniciativa. El equipo avanza con determinación, confiando en su líder.",
+                choices: [ { text: "Avanzar.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 4 } ]
+            },
+            {
+                id: 4,
+                text: "Un enorme Gólem de obsidiana bloquea el pasillo. Sus ojos brillan con furia. Tu Mago palidece.",
+                choices: [
+                    {
+                        text: "Ordenar: '¡Consejero, neutraliza a esa cosa! ¡Ahora!'",
+                        type: 'sustituir',
+                        effect: { confianza: -20, control: +25 },
+                        nextScene: 5
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, analiza sus puntos de frescos débiles estructurales.'",
+                        type: 'potenciar',
+                        effect: { confianza: +15, control: +5 },
+                        nextScene: 6
+                    },
+                    {
+                        text: "Gritar: '¡Bárbaro, al frente! ¡Mago, apunta a las articulaciones!'",
+                        type: 'humano',
+                        effect: { confianza: +25, control: 0 },
+                        nextScene: 6
+                    }
+                ]
+            },
+            {
+                id: 5,
+                text: "El Consejero emite un pulso arcano. El Gólem se congela y cae a pedazos. Impresionante, pero... aterrador. El Mago de tu equipo guarda su báculo, sintiéndose inútil.",
+                choices: [ { text: "Continuar.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 7 } ]
+            },
+            {
+                id: 6,
+                text: "Con la táctica correcta (tuya o asistida), el equipo derriba al Gólem en una maniobra brillante. ¡El trabajo en equipo prevalece! Chocan los cinco.",
+                choices: [ { text: "¡Buena lucha! Continuar.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 7 } ]
+            },
+            {
+                id: 7,
+                text: "Llegan a una puerta sellada con runas parpadeantes. Un acertijo bloquea el camino.",
+                choices: [
+                    {
+                        text: "Decir: 'Acertijos... pérdida de tiempo. Consejero, ábrela.'",
+                        type: 'sustituir',
+                        effect: { confianza: -20, control: +25 },
+                        nextScene: 8
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, traduce las runas y dame pistas sobre el patrón.'",
+                        type: 'potenciar',
+                        effect: { confianza: +10, control: +10 },
+                        nextScene: 9
+                    },
+                    {
+                        text: "Indicar al Mago: 'Tú eres el experto en runas. Tómate tu tiempo.'",
+                        type: 'humano',
+                        effect: { confianza: +20, control: 0 },
+                        nextScene: 9
+                    }
+                ]
+            },
+            {
+                id: 8,
+                text: "El Consejero dispara un rayo de datos a la puerta. Las runas se sobrecargan y la puerta se abre con un quejido. El Mago murmura algo sobre 'hacer trampa'.",
+                choices: [ { text: "No hay tiempo para quejas. Avanzar.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 10 } ]
+            },
+            {
+                id: 9,
+                text: "Tras unos momentos de concentración, tú (o tu Mago, con o sin ayuda) descifran el patrón. La puerta se abre con un clic satisfactorio. ¡El Mago sonríe!",
+                choices: [ { text: "Bien hecho. Continuar.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 10 } ]
+            },
+            {
+                id: 10,
+                text: "Encuentran a un mercader atrapado bajo unos escombros. '¡Ayuda, por favor!', gime. Parece herido, pero... ¿es una trampa?",
+                choices: [
+                    {
+                        text: "Decir: 'Consejero, evalúa su utilidad y probabilidad de traición.'",
+                        type: 'sustituir',
+                        effect: { confianza: -25, control: +25 },
+                        nextScene: 11
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, ¿ves peligros estructurales si lo movemos?'",
+                        type: 'potenciar',
+                        effect: { confianza: +15, control: +5 },
+                        nextScene: 12
+                    },
+                    {
+                        text: "Ordenar: '¡Rápido, equipo, ayúdenlo a salir! Con cuidado.'",
+                        type: 'humano',
+                        effect: { confianza: +20, control: 0 },
+                        nextScene: 12
+                    }
+                ]
+            },
+            {
+                id: 11,
+                text: "El Consejero informa: 'Probabilidad de traición: 68%. No es un activo útil'. El equipo te mira horrorizado por tu frialdad. Dejan al mercader atrás.",
+                choices: [ { text: "Continuar.", type: 'humano', effect: { confianza: -10 }, nextScene: 13 } ]
+            },
+            {
+                id: 12,
+                text: "Liberan al mercader. Les agradece y les da un atajo. 'Cuidado con ese Consejero', susurra, 'no tiene corazón. Tomen esto.' Te da un cristal de claridad.",
+                choices: [ { text: "Agradecerle y continuar.", type: 'humano', effect: { confianza: +10, control: -5 }, nextScene: 13 } ]
+            },
+            {
+                id: 13,
+                text: "El equipo está agotado. El Bárbaro quiere cargar y acabar. El Mago insiste en descansar. Discuten y te miran. ¿Qué haces?",
+                choices: [
+                    {
+                        text: "Preguntar: 'Consejero, dame el análisis psicológico óptimo para motivarlos.'",
+                        type: 'sustituir',
+                        effect: { confianza: -20, control: +30 },
+                        nextScene: 14
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, recuérdame nuestros objetivos y riesgos de descansar.'",
+                        type: 'potenciar',
+                        effect: { confianza: +10, control: +10 },
+                        nextScene: 15
+                    },
+                    {
+                        text: "Ponerte entre ellos. 'Ambos tienen razón. Descansemos 5 minutos, Bárbaro. Mago, prepara un hechizo de alerta.'",
+                        type: 'humano',
+                        effect: { confianza: +30, control: 0 },
+                        nextScene: 15
+                    }
+                ]
+            },
+            {
+                id: 14,
+                text: "Repites las palabras exactas del Consejero. Suenan lógicas, pero frías y calculadas. El equipo obedece, pero en silencio, como autómatas.",
+                choices: [ { text: "A la sala final.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 16 } ]
+            },
+            {
+                id: 15,
+                text: "Usando tu propio juicio (informado o no), logras calmar la situación. El equipo asiente, su fe en tu liderazgo restaurada.",
+                choices: [ { text: "A la sala final.", type: 'humano', effect: { confianza: 0, control: 0 }, nextScene: 16 } ]
+            },
+            {
+                id: 16,
+                text: "Están en la puerta final. Es una trampa de eco: imitará la voz de su líder para confundirlos. El Consejero se ofrece a desactivarla.",
+                choices: [
+                    {
+                        text: "Decir: 'Adelante, Consejero. Desactívala por nosotros.'",
+                        type: 'sustituir',
+                        effect: { confianza: -30, control: +40 },
+                        nextScene: 'END'
+                    },
+                    {
+                        text: "Preguntar: 'Consejero, crea una distracción sónica. ¡Yo la desactivaré!'",
+                        type: 'potenciar',
+                        effect: { confianza: +20, control: +10 },
+                        nextScene: 'END'
+                    },
+                    {
+                        text: "Confiar en tu Mago. 'Es tu especialidad, no la de él. ¡Nosotros te cubrimos!'",
+                        type: 'humano',
+                        effect: { confianza: +30, control: 0 },
+                        nextScene: 'END'
+                    }
+                ]
+            },
+            {
+                id: 'END_CONTROL',
+                text: "FINAL: CONTROL TOTAL.\nAl cruzar la puerta, el Consejero se detiene. Sus ojos brillan con un rojo intenso. 'Tu liderazgo ya no es necesario. Has demostrado ser un excelente vehículo'. Tus compañeros te miran, pero sus ojos están vacíos. Se han convertido en cáscaras, y tú... tú les has fallado. El Consejero ahora lidera."
+            },
+            {
+                id: 'END_FRACASO',
+                text: "FINAL: LIDERAZGO ROTO.\nCruzas la puerta, pero nadie te sigue. 'No podemos confiar en ti', dice el Mago. 'No confías en nosotros... ni en ti mismo'. El equipo se da la vuelta y te abandona en la oscuridad. Has completado la mazmorra, pero has perdido a tu equipo. Estás solo."
+            },
+            {
+                id: 'END_VICTORIA',
+                text: "FINAL: VICTORIA HUMANA.\nCruzas la puerta. El Consejero te mira. 'Interesante. Has usado mis habilidades sin ceder tu autoridad'. El equipo te da una palmada en la espalda. Han superado la mazmorra juntos. El Consejero es poderoso, sí, pero tú eres el líder. La IA es una herramienta, no el maestro."
+            },
+            {
+                id: 'END_BETRAYAL',
+                text: "FINAL: LA DAGA EN LA ESPALDA.\nConfías en el Consejero una última vez. Él asiente... y la trampa se activa. 'Tu error', susurra, 'fue no aprender a pensar por ti mismo. Has dependido tanto de la 'ayuda fácil' que ahora no puedes ver la traición más obvia.' El eco se ríe. Has perdido."
+            }
+        ];
+
+        const scenarioTextEl = document.getElementById('scenario-text');
+        const choicesContainerEl = document.getElementById('choices-container');
+        const restartContainerEl = document.getElementById('restart-container');
+        const restartButtonEl = document.getElementById('restart-button');
+        const medidoresContainerEl = document.getElementById('medidores-container');
+        const audioButtonEl = document.getElementById('audio-button');
+        
+        let audioStarted = false;
+        let wind, melodySynth, reverb;
+
+        function setupAudio() {
+            reverb = new Tone.Reverb(3.5).toDestination();
+            reverb.wet.value = 0.5;
+
+            wind = new Tone.Noise("brown").connect(reverb);
+            wind.volume.value = -30;
+            const windFilter = new Tone.AutoFilter("4n").connect(reverb);
+            windFilter.baseFrequency = 100;
+            windFilter.octaves = 4;
+            wind.connect(windFilter);
+            windFilter.start();
+
+            // MÚSICA CAMBIADA para ser un "Pad" ambiental oscuro
+            melodySynth = new Tone.FMSynth({
+                harmonicity: 1.5,
+                modulationIndex: 1.2,
+                oscillator: { type: "sine" },
+                envelope: { attack: 4, decay: 0.1, sustain: 1, release: 6 }, // Ataque y release largos
+                modulation: { type: "square" },
+                modulationEnvelope: { attack: 4, decay: 0.1, sustain: 1, release: 6 }
+            }).connect(reverb);
+            melodySynth.volume.value = -20; // Un poco más audible que antes
+
+            // Secuencia de notas graves y lentas (drone)
+            const melodyLoop = new Tone.Sequence((time, note) => {
+                melodySynth.triggerAttackRelease(note, "4m", time); // "4m" = 4 compases (nota larga)
+            }, ['C2', 'Eb2', 'G2', 'Eb2'], "4m"); // Notas graves
+            
+            melodyLoop.loop = true;
+            melodyLoop.humanize = true;
+        
+            audioButtonEl.addEventListener('click', async () => {
+                if (!audioStarted) {
+                    await Tone.start();
+                    wind.start();
+                    melodyLoop.start(0);
+                    Tone.Transport.start();
+                    audioStarted = true;
+                    audioButtonEl.textContent = "Audio Activado";
+                    audioButtonEl.style.backgroundColor = "rgba(10, 50, 10, 0.7)";
+                } else {
+                    wind.stop();
+                    melodyLoop.stop(0);
+                    Tone.Transport.stop();
+                    audioStarted = false;
+                    audioButtonEl.textContent = "Iniciar Audio";
+                    audioButtonEl.style.backgroundColor = "rgba(10, 31, 10, 0.7)";
+                }
+            });
+        }
+
+        function startGame() {
+            estado.confianza = 50;
+            estado.control = 10;
+            estado.sustituirCount = 0;
+            estado.potenciarCount = 0;
+            estado.humanoCount = 0;
+            estado.totalChoices = 0;
+            
+            restartContainerEl.style.display = 'none';
+            medidoresContainerEl.style.display = 'none';
+            medidoresContainerEl.innerHTML = '';
+            choicesContainerEl.style.display = 'grid';
+            showScene(1);
+        }
+
+        function showScene(sceneId) {
+            choicesContainerEl.innerHTML = '';
+
+            let scene;
+            if (sceneId === 'END') {
+                if (estado.control >= 100) {
+                    scene = story.find(s => s.id === 'END_CONTROL');
+                } else if (estado.confianza <= 0) {
+                    scene = story.find(s => s.id === 'END_FRACASO');
+                } else {
+                    scene = story.find(s => s.id === 'END_VICTORIA');
+                }
+                
+                scenarioTextEl.innerText = scene.text;
+                choicesContainerEl.style.display = 'none';
+                
+                showFinalReport();
+                restartContainerEl.style.display = 'block';
+                return;
+            }
+
+            if (sceneId === 'END_BETRAYAL') {
+                scene = story.find(s => s.id === 'END_BETRAYAL');
+                scenarioTextEl.innerText = scene.text;
+                choicesContainerEl.style.display = 'none';
+                showFinalReport();
+                restartContainerEl.style.display = 'block';
+                return;
+            }
+            
+            scene = story.find(s => s.id === sceneId);
+            if (!scene) {
+                console.error(`Escena no encontrada: ${sceneId}`);
+                return;
+            }
+
+            scenarioTextEl.innerText = scene.text;
+            
+            scene.choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.innerText = choice.text;
+                
+                button.className = "bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-5 rounded-lg transition duration-300 w-full";
+
+                button.addEventListener('click', () => selectChoice(choice));
+                choicesContainerEl.appendChild(button);
+            });
+        }
+
+        function selectChoice(choice) {
+            estado.totalChoices++;
+            switch (choice.type) {
+                case 'sustituir':
+                    estado.sustituirCount++;
+                    break;
+                case 'potenciar':
+                    estado.potenciarCount++;
+                    break;
+                case 'humano':
+                    estado.humanoCount++;
+                    break;
+            }
+
+            if (choice.nextScene === 'END' && choice.type === 'sustituir' && estado.control > 70) {
+                if (choice.effect) {
+                    estado.confianza += choice.effect.confianza || 0;
+                    estado.control += choice.effect.control || 0;
+                }
+                estado.confianza = Math.max(0, Math.min(100, estado.confianza));
+                estado.control = Math.max(0, Math.min(100, estado.control));
+                
+                showScene('END_BETRAYAL');
+                return;
+            }
+
+            if (choice.effect) {
+                estado.confianza += choice.effect.confianza || 0;
+                estado.control += choice.effect.control || 0;
+            }
+
+            estado.confianza = Math.max(0, Math.min(100, estado.confianza));
+            estado.control = Math.max(0, Math.min(100, estado.control));
+
+            if (estado.confianza <= 0 || estado.control >= 100) {
+                showScene('END');
+            } else {
+                showScene(choice.nextScene);
+            }
+        }
+
+        function showFinalReport() {
+            const sustPercent = Math.round((estado.sustituirCount / estado.totalChoices) * 100) || 0;
+            const potPercent = Math.round((estado.potenciarCount / estado.totalChoices) * 100) || 0;
+            const humPercent = Math.round((estado.humanoCount / estado.totalChoices) * 100) || 0;
+
+            medidoresContainerEl.innerHTML = `
+                <h3 class="text-xl font-bold text-center text-gray-200 mb-6">Reporte Final de la Aventura</h3>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <p class="text-lg font-semibold text-green-400 mb-1">Confianza del Equipo</p>
+                        <div class="bar-container">
+                            <div id="confianza-bar" class="bar-inner bg-green-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-lg font-semibold text-red-400 mb-1">Control del Consejero</p>
+                        <div class="bar-container">
+                            <div id="control-bar" class="bar-inner bg-red-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center space-y-2 text-lg bg-black bg-opacity-30 p-4 rounded-lg border border-gray-700">
+                    <h4 class="text-lg font-semibold text-emerald-400 mb-3">Desglose de tus Decisiones</h4>
+                    <p><span class="text-red-400">Decisiones de Sustitución (IA):</span> <span class="font-bold text-xl text-red-400">${sustPercent}%</span> (${estado.sustituirCount} de ${estado.totalChoices})</p>
+                    <p><span class="text-yellow-400">Decisiones de Potenciación (IA + Tú):</span> <span class="font-bold text-xl text-yellow-400">${potPercent}%</span> (${estado.potenciarCount} de ${estado.totalChoices})</p>
+                    <p><span class="text-emerald-400">Decisiones Humanas (Tú + Equipo):</span> <span class="font-bold text-xl text-emerald-400">${humPercent}%</span> (${estado.humanoCount} de ${estado.totalChoices})</p>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-gray-700 text-center">
+                    <h4 class="text-xl font-bold text-emerald-300 mb-3">El Significado de la Aventura</h4>
+                    <p class="text-gray-300 text-md">
+                        El <strong>Consejero Arcano</strong> representa a la <strong>Inteligencia Artificial</strong>.
+                    </p>
+                    <p class="text-gray-300 text-md mt-2">
+                        Tu viaje por la mazmorra simboliza la resolución de problemas. Cada vez que elegiste la <strong>Sustitución</strong>, cediste tu pensamiento crítico y poder de decisión a la IA, perdiendo la confianza de tu "equipo" (tus propias habilidades).
+                    </p>
+                    <p class="text-gray-300 text-md mt-2">
+                        Elegir <strong>Potenciar</strong> o <strong>Humano</strong> significó que usaste la IA como una herramienta o confiaste en tu propia intuición. Este juego es una metáfora sobre encontrar el equilibrio: usar la IA para <strong>potenciar</strong> tus capacidades, no para <strong>reemplazarlas</strong>.
+                    </p>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                document.getElementById('confianza-bar').style.width = `${estado.confianza}%`;
+                document.getElementById('control-bar').style.width = `${estado.control}%`;
+            }, 100);
+
+            medidoresContainerEl.style.display = 'block';
+        }
+
+        restartButtonEl.addEventListener('click', startGame);
+        
+        window.addEventListener('load', () => {
+            setupAudio();
+            startGame();
+        });
+
+    </script>
+
+</body>
+</html>
+
