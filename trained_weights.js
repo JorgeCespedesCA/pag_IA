@@ -41,7 +41,7 @@ const TRAINED_WEIGHTS = {
   },
 
   // PESOS DE LA RED (Formato de Cespedes)
-  // PESOS ENTRENADOS - Generados el 13/11/2025, 11:16:27 p. m.
+  // PESOS ENTRENADOS - Generados el 13/11/2025, 11:16:27 p. m.
 // Copia estos valores dentro de TRAINED_WEIGHTS en trained_weights.js
 
 weights_ih: [

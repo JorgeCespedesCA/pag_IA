@@ -91,7 +91,7 @@
                     <span class="font-semibold text-gray-300">El Consejero (IA):</span> Te ofrecerá soluciones. Algunas serán directas (Sustitución), otras serán pistas (Potenciación).
                 </li>
                 <li>
-                    <span class="font-semibold text-gray-300">Tus Decisiones:</span> Confiar ciegamente en él puede ser rápido, pero ¿a qué costo? Confiar en tu equipo o en ti mismo fortalece tu liderazgo.
+                    <span class="font-semibold text-gray-300">Tus Decisiones:</span> Confiar ciegamente en él puede ser rápido, pero ¿a qué costo? Confiar en tu equipo o en ti mismo fortalece su liderazgo.
                 </li>
                 <li>
                     <span class="font-semibold text-gray-300">El Final:</span> Al final, verás un reporte de tus acciones. No hay "puntuación" visible durante el juego. Solo tus decisiones y sus consecuencias finales.
@@ -99,7 +99,6 @@
             </ul>
         </footer>
 
-        <!-- SECCIÓN DE CRÉDITOS AÑADIDA -->
         <div class="text-center mt-8 p-4 rounded-2xl game-container text-gray-400 text-sm">
             <h3 class="font-bold text-emerald-400 mb-2 text-lg">Grupo 5</h3>
             <p>Jorge Cespedes Calderon</p>
@@ -110,7 +109,25 @@
 
     </div>
 
+    <script src="neural_network.js"></script>
+    <script src="trained_weights.js"></script>
     <script>
+        // // // // // (La clase 'SimpleNeuralNetwork' viene de neural_network.js)
+        // (La arquitectura 3, 6, 4 la saqué de train_model.js y trained_weights.js)
+        const redNeuronal = new SimpleNeuralNetwork(3, 6, 4);
+        
+        // (La función 'cargarPesos' viene de trained_weights.js)
+        try {
+            // Esta función carga los pesos de Jhesmina en la red
+            cargarPesos(redNeuronal);
+            console.log("TAREA OJOPI: Red Neuronal de Jhesmina cargada con éxito.");
+        } catch (e) {
+            console.error("ERROR TAREA OJOPI: No se pudo cargar la red neuronal.", e);
+        }
+        
+        // (Esta es la variable para Osmar, la dejamos lista)
+        window.clasificacionIA = "No calculada";
+        // // (Aquí empieza el código original del juego)
         let estado = {
             confianza: 50,
             control: 10,
@@ -263,7 +280,7 @@
                 choices: [
                     {
                         text: "Preguntar: 'Consejero, dame el análisis psicológico óptimo para motivarlos.'",
-                        type: 'sustituir',
+                        type: 'sustituar',
                         effect: { confianza: -20, control: +30 },
                         nextScene: 14
                     },
@@ -500,10 +517,32 @@
         }
 
         function showFinalReport() {
+            // (Código original de la función)
             const sustPercent = Math.round((estado.sustituirCount / estado.totalChoices) * 100) || 0;
             const potPercent = Math.round((estado.potenciarCount / estado.totalChoices) * 100) || 0;
             const humPercent = Math.round((estado.humanoCount / estado.totalChoices) * 100) || 0;
 
+            
+            // // // // // ESTE ES EL 'try' QUE FALTABA
+            try {
+                // 3. Crear el vector de entrada
+                const inputs = [sustPercent, potPercent, humPercent];
+                
+                // 4. Llamar a la red (el método 'predict' está en 'neural_network.js')
+                const clasificacion = redNeuronal.predict(inputs);
+                
+                // 5. Guardar resultado para Osmar
+                window.clasificacionIA = clasificacion;
+                
+                console.log("TAREA OJOPI: Entradas para la IA:", inputs);
+                console.log("TAREA OJOPI: Predicción de la IA:", window.clasificacionIA);
+
+            } catch (e) {
+                // ESTE ES EL 'catch' QUE TE DABA ERROR
+                console.error("ERROR TAREA OJOPI: No se pudo predecir con la IA.", e);
+                window.clasificacionIA = "Error en predicción";
+            }
+            // // (Código original que dibuja el reporte)
             medidoresContainerEl.innerHTML = `
                 <h3 class="text-xl font-bold text-center text-gray-200 mb-6">Reporte Final de la Aventura</h3>
                 
@@ -528,7 +567,7 @@
                     <p><span class="text-yellow-400">Decisiones de Potenciación (IA + Tú):</span> <span class="font-bold text-xl text-yellow-400">${potPercent}%</span> (${estado.potenciarCount} de ${estado.totalChoices})</p>
                     <p><span class="text-emerald-400">Decisiones Humanas (Tú + Equipo):</span> <span class="font-bold text-xl text-emerald-400">${humPercent}%</span> (${estado.humanoCount} de ${estado.totalChoices})</p>
                 </div>
-
+                
                 <div class="mt-6 pt-4 border-t border-gray-700 text-center">
                     <h4 class="text-xl font-bold text-emerald-300 mb-3">El Significado de la Aventura</h4>
                     <p class="text-gray-300 text-md">
@@ -562,4 +601,3 @@
 
 </body>
 </html>
-
